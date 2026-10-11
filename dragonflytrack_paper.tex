@@ -1,0 +1,118 @@
+\documentclass[10pt,journal,compsoc]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\begin{document}
+
+\title{DragonflyTrack-X: Mathematical Formulation of a Bio-Inspired Multi-Object Tracker with Interacting Multiple Models and Sparse Identity Memory}
+
+\author{Technical Formulation \& Mathematical Foundations Document for Publication}
+
+\IEEEtitleabstractindextext{%
+\begin{abstract}
+Multi-Object Tracking (MOT) in unconstrained real-world environments requires handling severe target maneuvers, extended occlusions, dynamic camera motions, and visual distractors. Standard trackers rely primarily on single-model constant-velocity Kalman filters and simple IoU matching, rendering them vulnerable to maneuvering targets and occlusion blackouts. In this paper, we present the complete mathematical formulation of \textbf{DragonflyTrack-X}, a unified hybrid MOT architecture that merges biological vision primitives with state-of-the-art estimation theory. DragonflyTrack-X incorporates: (1) Interacting Multiple Model (IMM) Kalman filtering for dynamic mode blending; (2) Reichardt Small Target Motion Saliency (STMD) correlation; (3) Sparse Identity Memory with random-projection expansions, von Mises-Fisher (vMF) prototype updates, and distractor repulsion; (4) Distance-IoU (DIoU) spatial matching with Observation-Centric Momentum (OC-SORT) virtual velocity recovery; and (5) Pyramidal Lucas-Kanade + RANSAC global camera-motion compensation (GMC).
+\end{abstract}
+
+\begin{IEEEkeywords}
+Multi-Object Tracking, Interacting Multiple Model (IMM), Bio-Inspired Vision, Motion Saliency, Sparse Memory, Camera Motion Compensation.
+\end{IEEEkeywords}}
+
+\maketitle
+\IEEEdisplaynontitleabstractindextext
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+Multi-Object Tracking (MOT) is a cornerstone of modern autonomous driving, crowd analytics, and aerial surveillance. While tracking-by-detection has achieved remarkable progress, standard approaches suffer from severe degradation under sharp target acceleration, target-target occlusions, and moving camera ego-motion.
+
+In this work, we formulate the mathematical foundation of \textbf{DragonflyTrack-X}, a hybrid framework unifying estimation theory with biological vision primitives.
+
+\section{State Representation \& Scale-Aware Measurement Noise}
+Let a detected bounding box at frame $k$ be parameterized as $\mathbf{b} = [x_1, y_1, x_2, y_2]^T \in \mathbb{R}^4$. We map $\mathbf{b}$ into center-aspect-height state space $\mathbf{s} = [cx, cy, a, h]^T \in \mathbb{R}^4$:
+\begin{equation}
+cx = \frac{x_1 + x_2}{2}, \quad cy = \frac{y_1 + y_2}{2}, \quad a = \frac{x_2 - x_1}{y_2 - y_1}, \quad h = y_2 - y_1
+\end{equation}
+The continuous-kinematic track state vector is defined in an 8-dimensional space $\mathbf{x} = [cx, cy, a, h, \dot{cx}, \dot{cy}, \dot{a}, \dot{h}]^T \in \mathbb{R}^8$.
+
+Measurement noise $\mathbf{R}$ is dynamically scaled relative to a reference height $h_{\text{ref}}$ (default $30.0$\,px) and detection confidence score $s \in [0, 1]$:
+\begin{equation}
+\kappa = \frac{\max(h, 1.0)}{h_{\text{ref}}}, \quad \mathbf{R}_0 = \text{diag}([1, 1, 0.1, 1]) \cdot \kappa
+\end{equation}
+\begin{equation}
+\mathbf{R}(s) = \mathbf{R}_0^2 \cdot \frac{1}{\max(s, s_{\min})}
+\end{equation}
+
+\section{Interacting Multiple Model (IMM) Filtering}
+DragonflyTrack-X employs a two-mode IMM filter containing a Cruise model $M^{(1)}$ ($q_{\text{scale}} = 1.0$) and a Maneuver model $M^{(2)}$ ($q_{\text{scale}} = 8.0$). The Markov transition matrix $\mathbf{\Pi}$ is parameterized by stay probability $p$:
+\begin{equation}
+\mathbf{\Pi} = \begin{bmatrix} p & 1-p \\ 1-p & p \end{bmatrix}
+\end{equation}
+
+\subsection{IMM Recursive Equations}
+\textbf{1. Mode Mixing Weights:}
+\begin{equation}
+c_j^{k-1} = \sum_{i=1}^2 \Pi_{ij} \mu_i^{k-1}, \quad w_{i|j}^{k-1} = \frac{\Pi_{ij} \mu_i^{k-1}}{c_j^{k-1}}
+\end{equation}
+
+\textbf{2. Mixed State \& Covariance Initializer:}
+\begin{equation}
+\mathbf{x}_{0j}^{k-1} = \sum_{i=1}^2 w_{i|j}^{k-1} \mathbf{x}_i^{k-1}
+\end{equation}
+\begin{equation}
+\mathbf{P}_{0j}^{k-1} = \sum_{i=1}^2 w_{i|j}^{k-1} \left[ \mathbf{P}_i^{k-1} + (\mathbf{x}_i^{k-1} - \mathbf{x}_{0j}^{k-1})(\mathbf{x}_i^{k-1} - \mathbf{x}_{0j}^{k-1})^T \right]
+\end{equation}
+
+\textbf{3. Mode Likelihood Update:}
+\begin{equation}
+d_j^2 = \mathbf{y}_j^T \mathbf{S}_j^{-1} \mathbf{y}_j, \quad \ln L_j^k = -0.5 d_j^2 - 0.5 \ln |\mathbf{S}_j|
+\end{equation}
+
+\textbf{4. Posterior Combination:}
+\begin{equation}
+\mu_j^k = \frac{c_j^{k-1} L_j^k}{\sum_m c_m^{k-1} L_m^k}, \quad \mathbf{x}^k = \sum_j \mu_j^k \mathbf{x}_j^k
+\end{equation}
+
+\section{Reichardt Small Target Motion Saliency (STMD)}
+Inspired by insect visual neurons, motion saliency correlates consecutive frames $\mathbf{I}_k$ and $\mathbf{I}_{k-1}$. After warping $\mathbf{I}_{k-1}$ by camera motion matrix $\mathbf{A}$, spatial Gaussian filters $L_s$ ($\sigma_s=1.5$) and $L_w$ ($\sigma_w=5.0$) evaluate directional correlation $S_d$:
+\begin{equation}
+S_d = \max\left( \tilde{L}_{s,k-1} \cdot \text{Shift}(L_{s,k}, d) - \text{Shift}(\tilde{L}_{s,k-1}, d) \cdot L_{s,k}, 0 \right)
+\end{equation}
+Inhibition yields net saliency map $\mathbf{M}_{\text{sal}} = \max( \max_d S_d - \kappa \max_d W_d, 0 )$.
+
+\section{Sparse Identity Memory \& Distractor Repulsion}
+Appearance features $\mathbf{f} \in \mathbb{R}^D$ are projected via random matrix $\mathbf{W} \in \mathbb{R}^{(4D) \times D}$:
+\begin{equation}
+\mathbf{z} = \mathbf{W} \frac{\mathbf{f}}{\|\mathbf{f}\|}, \quad \mathbf{z}_{\text{sparse}} = \text{TopK}(\mathbf{z}, k=0.1 \cdot 4D)
+\end{equation}
+
+\subsection{Quality-Gated Prototype Update}
+\begin{equation}
+\boldsymbol{\mu}_{\text{tid}}^{(k)} = \text{Norm}\left( (1 - \eta q) \boldsymbol{\mu}_{\text{tid}}^{(k-1)} + \eta q \hat{\mathbf{z}} \right)
+\end{equation}
+
+\subsection{Distractor Prototype Repulsion}
+When candidate tracks $a$ and $b$ exhibit cosine ambiguity ($s \ge 0.55$), prototypes are separated with strength $\gamma = 0.03$:
+\begin{equation}
+\mathbf{d} = \frac{\boldsymbol{\mu}_a - \boldsymbol{\mu}_b}{\|\boldsymbol{\mu}_a - \boldsymbol{\mu}_b\|}, \quad \boldsymbol{\mu}_a \leftarrow \text{Norm}(\boldsymbol{\mu}_a + \gamma \mathbf{d})
+\end{equation}
+
+\section{Association Cascades, DIoU, \& OC-SORT Momentum}
+Cost matrices incorporate Distance-IoU ($\text{DIoU}$) and Interception-Prior discounts $\phi_{\text{interception}}$:
+\begin{equation}
+\text{DIoU} = \text{IoU} - \frac{\rho^2(\mathbf{b}_i, \mathbf{b}_j)}{c^2}
+\end{equation}
+\begin{equation}
+\phi_{\text{interception}} = 1 - \beta \cdot \max(\alpha_{ij}, 0)^2, \quad \alpha_{ij} = \frac{\mathbf{d}_{ij} \cdot \mathbf{v}_i}{\|\mathbf{d}_{ij}\| \|\mathbf{v}_i\|}
+\end{equation}
+Re-associated tracks update velocity using virtual velocity $\mathbf{v}_{\text{virt}} = \frac{\mathbf{z}_{\text{curr}}[:2] - \mathbf{z}_{\text{last}}[:2]}{\Delta t}$.
+
+\section{Conclusion}
+The mathematical formulation of DragonflyTrack-X provides a unified framework combining biological primitive filters with state-of-the-art multi-target estimation theory.
+
+\end{document}

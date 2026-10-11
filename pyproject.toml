@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dragonflytrack"
+version = "1.3.0"
+description = "DragonflyTrack-X: Multi-Object Tracker"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+    "opencv-python",
+]
