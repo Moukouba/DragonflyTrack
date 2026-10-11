@@ -21,26 +21,26 @@ It merges bio-inspired motion saliency and quality-gated identity memory with en
 
 ```
 Dragonfly/
-âââ dragonflytrack/            # Core Python Package
-â   âââ __init__.py            # Package exports (DragonflyTrackX, YOLODetectorAdapter, etc.)
-â   âââ kalman.py              # KalmanBoxFilter, IMMKalmanBoxFilter, DIoU & GIoU metrics
-â   âââ memory.py              # IdentityMemory (vMF prototype, random projections)
-â   âââ motion.py              # MotionSaliency & CameraMotion (GMC optical flow)
-â   âââ embedder.py            # ReID embedder interfaces (TorchReIDEmbedder, etc.)
-â   âââ tracker.py             # Main DragonflyTrackX tracking logic & Track state dataclass
-â   âââ adapters.py            # VideoFrameSource, YOLODetectorAdapter, MOTWriter, draw_tracks
-â   âââ benchmark.py           # Synthetic scenario generator, MOTA/IDF1 metrics, unit_tests
-âââ footage/                   # Sample video inputs
-â   âââ Shopping People Commerce Mall Many Crowd Walking Free Stock vide.mp4
-âââ results_x/                 # Tracking outputs (MOT text format & annotated video)
-â   âââ footage_tracks.txt
-â   âââ footage_tracked.mp4
-âââ dragonflytrack_paper.tex  # Mathematical formulation source
-âââ dragonflytrack_mathematics.pdf
-âââ test_footage.py            # Executable test script for running tracking on video footage
-âââ pyproject.toml             # Modern Python build configuration
-âââ setup.py                   # Setup script for editable package installation
-âââ README.md                  # Comprehensive documentation
+├── dragonflytrack/            # Core Python Package
+│   ├── __init__.py            # Package exports (DragonflyTrackX, YOLODetectorAdapter, etc.)
+│   ├── kalman.py              # KalmanBoxFilter, IMMKalmanBoxFilter, DIoU & GIoU metrics
+│   ├── memory.py              # IdentityMemory (vMF prototype, random projections)
+│   ├── motion.py              # MotionSaliency & CameraMotion (GMC optical flow)
+│   ├── embedder.py            # ReID embedder interfaces (TorchReIDEmbedder, etc.)
+│   ├── tracker.py             # Main DragonflyTrackX tracking logic & Track state dataclass
+│   ├── adapters.py            # VideoFrameSource, YOLODetectorAdapter, MOTWriter, draw_tracks
+│   └── benchmark.py           # Synthetic scenario generator, MOTA/IDF1 metrics, unit_tests
+├── footage/                   # Sample video inputs
+│   └── Shopping People Commerce Mall Many Crowd Walking Free Stock vide.mp4
+├── results_x/                 # Tracking outputs (MOT text format & annotated video)
+│   ├── footage_tracks.txt
+│   └── footage_tracked.mp4
+├── dragonflytrack_paper.tex  # Mathematical formulation source
+├── dragonflytrack_mathematics.pdf
+├── test_footage.py            # Executable test script for running tracking on video footage
+├── pyproject.toml             # Modern Python build configuration
+├── setup.py                   # Setup script for editable package installation
+└── README.md                  # Comprehensive documentation
 ```
 
 ---
