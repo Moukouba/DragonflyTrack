@@ -10,6 +10,7 @@ dist/
 
 # Generated documents and disposable text output
 *pdf*
+*.tex
 *.txt
 *.text
 *.log
